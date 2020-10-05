@@ -15,11 +15,13 @@ info ""
 info "https://github.com/home-assistant/supervised-installer"
 info ""
 
-sleep 10
+#sleep 10
 
 ARCH=$(uname -m)
 
 IP_ADDRESS=$(hostname -I | awk '{ print $1 }')
+
+info "Running from ${IP_ADDRESS}"
 
 BINARY_DOCKER=/usr/bin/docker
 
@@ -54,6 +56,7 @@ command -v curl > /dev/null 2>&1 || MISSING_PACAKGES+=("curl")
 command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACAKGES+=("avahi")
 command -v dbus-daemon > /dev/null 2>&1 || MISSING_PACAKGES+=("dbus")
 
+info "Starting pre-flight checks"
 
 if [ ! -z "${MISSING_PACAKGES}" ]; then
     warn "The folowing is missing on the host and needs "
@@ -61,10 +64,14 @@ if [ ! -z "${MISSING_PACAKGES}" ]; then
     error "missing: ${MISSING_PACAKGES[@]}"
 fi
 
+info "Packages checked"
+
 # Check if Modem Manager is enabled
 if systemctl list-unit-files ModemManager.service | grep enabled > /dev/null 2>&1; then
     warn "ModemManager service is enabled. This might cause issue when using serial devices."
 fi
+
+info "ModemManager is disabled"
 
 # Detect wrong docker logger config
 if [ ! -f "$FILE_DOCKER_CONF" ]; then
@@ -86,6 +93,8 @@ else
   fi
 fi
 
+info "Docker configuration ok"
+
 # Check dmesg access
 if [[ "$(sysctl --values kernel.dmesg_restrict)" != "0" ]]; then
     info "Fix kernel dmesg restriction"
@@ -94,14 +103,16 @@ if [[ "$(sysctl --values kernel.dmesg_restrict)" != "0" ]]; then
 fi
 
 # Create config for NetworkManager
-info "Creating NetworkManager configuration"
-rm -f /etc/network/interfaces
-curl -sL "${URL_NM_CONF}" > "${FILE_NM_CONF}"
-if [ ! -f "$FILE_NM_CONNECTION" ]; then
-    curl -sL "${URL_NM_CONNECTION}" > "${FILE_NM_CONNECTION}"
-fi
-info "Restarting NetworkManager"
-systemctl restart "${SERVICE_NM}"
+#info "Creating NetworkManager configuration"
+#rm -f /etc/network/interfaces
+#curl -sL "${URL_NM_CONF}" > "${FILE_NM_CONF}"
+#if [ ! -f "$FILE_NM_CONNECTION" ]; then
+#    curl -sL "${URL_NM_CONNECTION}" > "${FILE_NM_CONNECTION}"
+#fi
+#info "Restarting NetworkManager"
+#systemctl restart "${SERVICE_NM}"
+
+info "Skipped the network setup"
 
 # Parse command line parameters
 while [[ $# -gt 0 ]]; do
@@ -196,6 +207,8 @@ EOF
 ##
 # Pull supervisor image
 info "Install supervisor Docker container"
+info "Pulling $HASSIO_DOCKER:$HASSIO_VERSION"
+
 docker pull "$HASSIO_DOCKER:$HASSIO_VERSION" > /dev/null
 docker tag "$HASSIO_DOCKER:$HASSIO_VERSION" "$HASSIO_DOCKER:latest" > /dev/null
 
